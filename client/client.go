@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"fmt"
 	"strconv"
+	"io/ioutil"
 )
 
 const (
@@ -51,7 +52,7 @@ func main() {
 	count := 1
 	go func(){
 		for{
-			if count>12{
+			if count>100{
 				continue
 			}
 			fmt.Println("count: ", count)
@@ -84,7 +85,7 @@ func (this *Client) SendMessage(userId uint64) error {
 	}
 	connHead := http.Header{}
 	connHead.Add("UserId", strconv.Itoa(int(userId)))
-	connHead.Add("UserToken", tokenList[strconv.Itoa(int(userId))])
+	connHead.Add("UserToken", getUserToken(strconv.Itoa(int(userId))))
 	conn, _, err := dialer.Dial("ws://"+this.Host+this.Path, connHead)
 	if err != nil {
 		log.Fatal(err)
@@ -173,4 +174,22 @@ func MsgAssemblerReader(data string, userId uint64) []byte {
 		log.Fatal("pb marshaling error: ", err)
 	}
 	return byteData
+}
+
+func getUserToken(userId string)string{
+	//在这里加入用户认证， token获取
+	req, err := http.NewRequest("get", "http://localhost:8080/getToken", nil)
+	if err!=nil{
+		log.Fatal(err)
+	}
+	req.Header.Add("Name", userId)
+	req.Header.Add("Passwd", string(userId))
+	res, err1 := http.DefaultClient.Do(req)
+	if err1 != nil{
+		log.Fatal(err1)
+	}
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
+	fmt.Printf("\"%s\":\"%s\",\n",userId, string(body))
+	return string(body)
 }
